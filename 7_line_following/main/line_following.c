@@ -5,10 +5,14 @@
 #include "tuning_http_server.h"
 
 #define MODE NORMAL_MODE
-#define BLACK_MARGIN 400
-#define WHITE_MARGIN 2000
 #define bound_LSA_LOW 0
 #define bound_LSA_HIGH 1000
+
+/*
+ * calibrated margins for the readings of lsa
+ */
+static int black_margin;
+static int white_margin;
 
 /*
  * weights given to respective line sensor
@@ -40,7 +44,7 @@ void lsa_to_bar()
     bool number[8] = {0,0,0,0,0,0,0,0};
     for(int i = 0; i < 4; i++)
     {
-        number[7-i] = (line_sensor_readings.adc_reading[i] < BLACK_MARGIN) ? 0 : 1; //If adc value is less than black margin, then set that bit to 0 otherwise 1. 
+        number[7-i] = (line_sensor_readings.adc_reading[i] < BLACK_BOUNDARY) ? 0 : 1; //If adc value is less than black margin, then set that bit to 0 otherwise 1. 
         var = bool_to_uint8(number);  //A helper function to convert bool array to unsigned int.
         ESP_ERROR_CHECK(set_bar_graph(var)); //Setting bar graph led with unsigned int value.
     }
@@ -66,7 +70,7 @@ void calculate_error()
     
     for(int i = 0; i < 4; i++)
     {
-        if(line_sensor_readings.adc_reading[i] > BLACK_MARGIN)
+        if(line_sensor_readings.adc_reading[i] > BLACK_BOUNDARY)
         {
             all_black_flag = 0;
         }
@@ -109,13 +113,15 @@ void line_follow_task(void* arg)
     ESP_ERROR_CHECK(init_oled(&oled_config));
 #endif
     
+    calibrate(&black_margin, &white_margin);
+
     while(true)
     {
         line_sensor_readings = read_line_sensor();
         for(int i = 0; i < 4; i++)
         {
-            line_sensor_readings.adc_reading[i] = bound(line_sensor_readings.adc_reading[i], BLACK_MARGIN, WHITE_MARGIN);
-            line_sensor_readings.adc_reading[i] = map(line_sensor_readings.adc_reading[i], BLACK_MARGIN, WHITE_MARGIN, bound_LSA_LOW, bound_LSA_HIGH);
+            line_sensor_readings.adc_reading[i] = bound(line_sensor_readings.adc_reading[i], white_margin, black_margin);
+            line_sensor_readings.adc_reading[i] = map(line_sensor_readings.adc_reading[i], white_margin, black_margin, bound_LSA_LOW, bound_LSA_HIGH);
         }
         
         calculate_error();
