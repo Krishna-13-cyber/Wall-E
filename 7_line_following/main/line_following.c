@@ -7,6 +7,7 @@
 #define MODE NORMAL_MODE
 #define bound_LSA_LOW 0
 #define bound_LSA_HIGH 1000
+#define BLACK_BOUNDARY 700
 
 /*
  * calibrated margins for the readings of lsa
